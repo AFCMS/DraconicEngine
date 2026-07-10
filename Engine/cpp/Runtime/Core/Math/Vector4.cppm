@@ -256,7 +256,10 @@ export namespace draco::math {
 
                 return _mm_cvtss_f32(sum);
             #elif ARCH_ARM64
-                #error "ARM64 NEON support not yet implemented."
+                const float32x4_t va = vld1q_f32(&a.x);
+                const float32x4_t vb = vld1q_f32(&b.x);
+
+                return vaddvq_f32(vmulq_f32(va, vb));
             #endif
         }
 

@@ -3,14 +3,25 @@ name: 🐧 Linux Builds
 on:
   push:
     branches:
-      - '**'
+      - 'master'
   pull_request:
     branches:
       - '**'
 
 jobs:
   build-linux:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ format('ubuntu-24.04{0}', matrix.arch == 'arm64' && '-arm' || '') }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              arch: x64,
+            }
+          - {
+              arch: arm64,
+            }
 
     steps:
       - name: Checkout Source Code
@@ -18,17 +29,20 @@ jobs:
         with:
           submodules: recursive
           persist-credentials: false
-
+      
       - name: Set up Clang Compiler
-        uses: egor-tensin/setup-clang@v1
+        uses: egor-tensin/setup-clang@v2
         with:
           version: 20
 
       - name: Install System Dependencies
         run: |
-          wget https://github.com/Kitware/CMake/releases/download/v4.3.0/cmake-4.3.0-linux-x86_64.tar.gz
-          tar -xzf cmake-4.3.0-linux-x86_64.tar.gz
-          echo "$(pwd)/cmake-4.3.0-linux-x86_64/bin" >> $GITHUB_PATH
+          REL_ARCH=${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}
+          wget https://github.com/Kitware/CMake/releases/download/v4.4.2/cmake-4.4.2-linux-${REL_ARCH}.tar.gz
+          wget https://github.com/Kitware/CMake/releases/download/v4.4.2/cmake-4.4.2-SHA-256.txt
+          grep -F "  cmake-4.4.2-linux-${REL_ARCH}.tar.gz" cmake-4.4.2-SHA-256.txt | sha256sum --check -
+          tar -xzf cmake-4.4.2-linux-${REL_ARCH}.tar.gz
+          echo "$(pwd)/cmake-4.4.2-linux-${REL_ARCH}/bin" >> $GITHUB_PATH
 
           sudo apt-get update
           sudo apt-get install -y \
@@ -69,9 +83,9 @@ jobs:
       - name: Cache Build Artifacts
         uses: hendrikmuhs/ccache-action@v1.2.23
         with:
-          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
           restore-keys: |
-            ${{ runner.os }}-ccache-
+            ${{ runner.os }}-${{ matrix.arch }}-ccache-
           max-size: "500M"
 
       - name: Configure Build System
@@ -92,9 +106,9 @@ jobs:
           ctest --test-dir build/debug --output-on-failure -j$(nproc)
 
       - name: Upload Engine Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: linux_debug
+          name: linux_${{ matrix.arch }}_debug
           path: build/debug/
           if-no-files-found: error
           retention-days: 7

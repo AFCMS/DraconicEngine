@@ -3,14 +3,25 @@ name: 🪟 Windows Builds
 on:
   push:
     branches:
-      - '**'
+      - 'master'
   pull_request:
     branches:
       - '**'
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.arch == 'arm64' && 'windows-11-arm' || 'windows-2025' }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              arch: x64,
+            }
+          - {
+              arch: arm64,
+            }
 
     steps:
       - name: Checkout Source Code
@@ -20,7 +31,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Clang Compiler
-        uses: egor-tensin/setup-clang@v1
+        uses: egor-tensin/setup-clang@v2
         with:
           version: 20
         
@@ -49,35 +60,38 @@ jobs:
       - name: Cache Build Artifacts
         uses: hendrikmuhs/ccache-action@v1.2.23
         with:
-          key: ${{ runner.os }}-ccache-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
           restore-keys: |
-            ${{ runner.os }}-ccache-
+            ${{ runner.os }}-${{ matrix.arch }}-ccache-
           max-size: "500M"
 
       - name: Configure Build System
         shell: pwsh
         run: |
+          $compilerTarget = "${{ matrix.arch == 'arm64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}"
           cmake --preset debug `
             -G Ninja `
             -DCMAKE_C_COMPILER=clang `
             -DCMAKE_CXX_COMPILER=clang++ `
+            "-DCMAKE_C_COMPILER_TARGET=$compilerTarget" `
+            "-DCMAKE_CXX_COMPILER_TARGET=$compilerTarget" `
             -DCMAKE_C_COMPILER_LAUNCHER=ccache `
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Compile Target Binary
         shell: pwsh
         run: |
-          cmake --build build/debug -j $env:NUMBER_OF_PROCESSORS
+          cmake --build build/debug -j $([Environment]::ProcessorCount)
 
       - name: Run Unit Tests
         shell: pwsh
         run: |
-          ctest --test-dir build/debug --output-on-failure -j $env:NUMBER_OF_PROCESSORS
+          ctest --test-dir build/debug --output-on-failure -j $([Environment]::ProcessorCount)
 
       - name: Upload Engine Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: windows_debug
+          name: windows_${{ matrix.arch }}_debug
           path: build/debug/
           if-no-files-found: error
           retention-days: 7
