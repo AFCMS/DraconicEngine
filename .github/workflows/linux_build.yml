@@ -8,9 +8,19 @@ on:
     branches:
       - '**'
 
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-linux:
+    name: Linux
     runs-on: ${{ format('ubuntu-24.04{0}', matrix.arch == 'arm64' && '-arm' || '') }}
+
+    permissions:
+      contents: read
 
     strategy:
       fail-fast: false
@@ -36,8 +46,9 @@ jobs:
           version: 20
 
       - name: Install System Dependencies
+        env:
+          REL_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}
         run: |
-          REL_ARCH=${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}
           wget https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-linux-${REL_ARCH}.tar.gz
           wget https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-SHA-256.txt
           grep -F "  cmake-4.4.3-linux-${REL_ARCH}.tar.gz" cmake-4.4.3-SHA-256.txt | sha256sum --check -
