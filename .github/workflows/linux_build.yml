@@ -49,11 +49,11 @@ jobs:
         env:
           REL_ARCH: ${{ matrix.arch == 'x64' && 'x86_64' || 'aarch64' }}
         run: |
-          wget https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-linux-${REL_ARCH}.tar.gz
-          wget https://github.com/Kitware/CMake/releases/download/v4.4.3/cmake-4.4.3-SHA-256.txt
-          grep -F "  cmake-4.4.3-linux-${REL_ARCH}.tar.gz" cmake-4.4.3-SHA-256.txt | sha256sum --check -
-          tar -xzf cmake-4.4.3-linux-${REL_ARCH}.tar.gz
-          echo "$(pwd)/cmake-4.4.3-linux-${REL_ARCH}/bin" >> $GITHUB_PATH
+          wget https://github.com/Kitware/CMake/releases/download/v4.5.0/cmake-4.5.0-linux-${REL_ARCH}.tar.gz
+          wget https://github.com/Kitware/CMake/releases/download/v4.5.0/cmake-4.5.0-SHA-256.txt
+          grep -F "  cmake-4.5.0-linux-${REL_ARCH}.tar.gz" cmake-4.5.0-SHA-256.txt | sha256sum --check -
+          tar -xzf cmake-4.5.0-linux-${REL_ARCH}.tar.gz
+          echo "$(pwd)/cmake-4.5.0-linux-${REL_ARCH}/bin" >> $GITHUB_PATH
 
           sudo apt-get update
           sudo apt-get install -y \
